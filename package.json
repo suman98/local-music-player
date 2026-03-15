@@ -1,0 +1,29 @@
+{
+    "name": "@music-library/core",
+    "version": "1.0.0",
+    "description": "Universal music library for web applications - supports desktop & mobile with persistence",
+    "main": "dist/index.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts",
+    "browser": "dist/index.umd.js",
+    "files": [
+      "dist",
+      "src"
+    ],
+    "scripts": {
+      "build": "tsc && rollup -c",
+      "dev": "tsc --watch",
+      "test": "jest"
+    },
+    "keywords": [
+      "music",
+      "audio",
+      "player",
+      "file-system",
+      "indexeddb",
+      "persistence"
+    ],
+    "author": "Your Name",
+    "license": "MIT"
+  }
+  
