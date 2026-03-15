@@ -14,10 +14,11 @@ async function scanDirectoryRecursive(
     if (depth > 5) return
 
     try {
-      for await (const entry of handle.values()) {
-        if (entry.kind === 'file' && isSupportedAudio(entry.name)) {
+      // @ts-ignore - FileSystemDirectoryHandle is iterable but TS doesn't recognize it
+      for await (const [name, entry] of handle) {
+        if (entry.kind === 'file' && isSupportedAudio(name)) {
           const file = await (entry as FileSystemFileHandle).getFile()
-          const track = await createAudioTrack(file, entry.name)
+          const track = await createAudioTrack(file, name)
           tracks.push(track)
         } else if (entry.kind === 'directory' && depth < 5) {
           await scan(entry as FileSystemDirectoryHandle, depth + 1)

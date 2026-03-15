@@ -24,6 +24,16 @@ export async function initDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Helper to convert IDB request to promise
+ */
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/**
  * Save tracks to IndexedDB
  */
 export async function saveTracksToIDB(
@@ -31,35 +41,47 @@ export async function saveTracksToIDB(
   folderInfo: FolderInfo
 ): Promise<void> {
   const db = await initDB()
-  const transaction = db.transaction(
-    [IDB_CONFIG.stores.tracks, IDB_CONFIG.stores.metadata],
-    'readwrite'
-  )
 
-  // Clear old data
-  transaction.objectStore(IDB_CONFIG.stores.tracks).clear()
-  transaction.objectStore(IDB_CONFIG.stores.metadata).clear()
-
-  // Save each track as ArrayBuffer to minimize size
+  // Prepare all data first (before transaction)
+  const storedTracks: StoredTrack[] = []
   for (const track of tracks) {
     const arrayBuffer = await track.file.arrayBuffer()
-    const storedTrack: StoredTrack = {
+    storedTracks.push({
       id: track.id,
       name: track.name,
       fileName: track.fileName,
       fileData: arrayBuffer,
       mimeType: track.mimeType || 'audio/mpeg',
       size: track.size || track.file.size,
-    }
-    transaction.objectStore(IDB_CONFIG.stores.tracks).put(storedTrack)
+    })
   }
 
-  // Save metadata
-  transaction.objectStore(IDB_CONFIG.stores.metadata).put(folderInfo, 'folderInfo')
-
+  // Now do all DB operations in one transaction
   return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
+    const transaction = db.transaction(
+      [IDB_CONFIG.stores.tracks, IDB_CONFIG.stores.metadata],
+      'readwrite'
+    )
+
+    const tracksStore = transaction.objectStore(IDB_CONFIG.stores.tracks)
+    const metadataStore = transaction.objectStore(IDB_CONFIG.stores.metadata)
+
+    try {
+      // Clear old data
+      tracksStore.clear()
+      metadataStore.clear()
+
+      // Add all new data
+      for (const storedTrack of storedTracks) {
+        tracksStore.add(storedTrack)
+      }
+      metadataStore.put(folderInfo, 'folderInfo')
+
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+    } catch (error) {
+      reject(error)
+    }
   })
 }
 
@@ -77,41 +99,35 @@ export async function loadTracksFromIDB(): Promise<{
       'readonly'
     )
 
+    // Make requests and convert to promises
     const tracksRequest = transaction.objectStore(IDB_CONFIG.stores.tracks).getAll()
     const metadataRequest = transaction
       .objectStore(IDB_CONFIG.stores.metadata)
       .get('folderInfo')
 
-    return new Promise((resolve) => {
-      let loadedTracks: AudioTrack[] = []
-      let folderInfo: FolderInfo | null = null
+    // Wait for both requests
+    const tracksData = await requestToPromise(tracksRequest)
+    const folderData = await requestToPromise(metadataRequest)
 
-      tracksRequest.onsuccess = () => {
-        loadedTracks = tracksRequest.result.map((stored: StoredTrack) =>
-          new Blob([stored.fileData], { type: stored.mimeType }),
-          ({
-            id: stored.id,
-            name: stored.name,
-            fileName: stored.fileName,
-            file: new Blob([stored.fileData], { type: stored.mimeType }),
-            mimeType: stored.mimeType,
-            size: stored.size,
-          } as AudioTrack)
-        )
-      }
-
-      metadataRequest.onsuccess = () => {
-        folderInfo = metadataRequest.result || null
-      }
-
-      transaction.oncomplete = () => {
-        resolve({ tracks: loadedTracks, folderInfo })
-      }
-
-      transaction.onerror = () => {
-        resolve({ tracks: [], folderInfo: null })
-      }
+    // Wait for transaction to complete
+    await new Promise<void>((resolve) => {
+      transaction.oncomplete = () => resolve()
     })
+
+    // Map the loaded data
+    const tracks: AudioTrack[] = tracksData.map((stored: StoredTrack) => ({
+      id: stored.id,
+      name: stored.name,
+      fileName: stored.fileName,
+      file: new Blob([stored.fileData], { type: stored.mimeType }),
+      mimeType: stored.mimeType,
+      size: stored.size,
+    } as AudioTrack))
+
+    return {
+      tracks,
+      folderInfo: folderData || null,
+    }
   } catch (err) {
     console.error('[MusicLibrary] IDB load error:', err)
     return { tracks: [], folderInfo: null }

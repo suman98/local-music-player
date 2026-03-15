@@ -186,13 +186,6 @@ import {
           throw new Error('No folder selected. Call load() first.')
         }
   
-        // Check if permission still granted
-        const permission = await dirHandleRef.queryPermission({ mode: 'read' })
-  
-        if (permission !== 'granted') {
-          throw new Error('Permission denied. Re-select the folder.')
-        }
-  
         const { tracks: newTracks, folderInfo: newFolderInfo } =
           await loadFromDesktopFolder(dirHandleRef)
   
