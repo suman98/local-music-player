@@ -9,12 +9,15 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    const musicLib = createMusicLibrary({
-      debugMode: true,
-      autoRestoreLast: true,
-    })
-    setLibrary(musicLib)
-    setTracks(musicLib.tracks)
+    const initLibrary = async () => {
+      const musicLib = await createMusicLibrary({
+        debugMode: true,
+        autoRestoreLast: true,
+      })
+      setLibrary(musicLib)
+      setTracks(musicLib.tracks)
+    }
+    initLibrary()
   }, [])
 
   useEffect(() => {
@@ -47,8 +50,8 @@ export default function App() {
 
   function getTrackSrc(track: AudioTrack): string {
     if (typeof track.url === 'string') return track.url
-    // @ts-expect-error
-    if (track.file instanceof File) return URL.createObjectURL(track.file)
+    // Handle both Blob and File (File is a subclass of Blob)
+    if (track.file instanceof Blob) return URL.createObjectURL(track.file)
     return ''
   }
 
