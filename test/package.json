@@ -17,8 +17,10 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:network": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "preview:network": "vite preview --host 0.0.0.0",
     "type-check": "tsc --noEmit"
   }
 }

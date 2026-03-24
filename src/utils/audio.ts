@@ -2,6 +2,27 @@ import { AudioTrack } from '../types'
 import { MIME_TYPE_MAP, SUPPORTED_AUDIO_FORMATS } from './constants'
 
 /**
+ * Generate UUID v4 (fallback for non-secure contexts)
+ */
+function generateUUID(): string {
+  // Use crypto.randomUUID if available (secure context)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    try {
+      return crypto.randomUUID()
+    } catch {
+      // Fall back to manual generation
+    }
+  }
+
+  // Fallback UUID v4 generator for non-secure contexts
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
+/**
  * Get audio file extension
  */
 export function getAudioExtension(filename: string): string | null {
@@ -68,7 +89,7 @@ export async function createAudioTrack(
   const duration = await getAudioDuration(file)
 
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     name: filename.replace(/\.[^.]+$/, ''),
     fileName: filename,
     file,
