@@ -48,6 +48,23 @@ export default function App() {
     }
   }
 
+  const handleClearAll = async () => {
+    if (!library) return
+    try {
+      await library.clear()
+      setTracks([])
+      setCurrentTrackIndex(null)
+      setIsPlaying(false)
+      if (audioRef.current) {
+        audioRef.current.src = ''
+        audioRef.current.pause()
+      }
+      console.log('All tracks cleared')
+    } catch (err) {
+      console.error('Failed to clear tracks', err)
+    }
+  }
+
   function getTrackSrc(track: AudioTrack): string {
     if (typeof track.url === 'string') return track.url
     // Handle both Blob and File (File is a subclass of Blob)
@@ -59,7 +76,12 @@ export default function App() {
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
       <h1>🎵 Music Library Test</h1>
 
-      <button onClick={handleLoadFolder}>Load Music Folder</button>
+      <div style={{ marginBottom: '1rem' }}>
+        <button onClick={handleLoadFolder}>Load Music Folder</button>
+        <button onClick={handleClearAll} style={{ marginLeft: '0.5rem' }}>
+          Clear All Tracks
+        </button>
+      </div>
 
       {tracks.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '1rem' }}>
