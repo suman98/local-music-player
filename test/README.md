@@ -4,6 +4,10 @@ A React test application for testing the music library extension.
 
 ## Quick Start
 
+## For live changing the local package
+
+"@music-library/core": "file:.."
+
 ### Installation
 
 ```bash
